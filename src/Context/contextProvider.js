@@ -15,6 +15,12 @@ const MyContextProvider = ({ children }) => {
     try {
       console.log("Making request to:", path, "with data:", obj); // Debug log
       
+      // Validate data before sending
+      if (!obj || Object.keys(obj).length === 0) {
+        console.error("No data to send!");
+        return { error: "No data provided" };
+      }
+      
       const getdata = await fetch(path, {
           method: "POST",
           headers: {
@@ -24,17 +30,34 @@ const MyContextProvider = ({ children }) => {
       });
       
       console.log("Response status:", getdata.status); // Debug log
+      console.log("Response headers:", getdata.headers); // Debug log
+      
+      // Get response text first to see raw response
+      const responseText = await getdata.text();
+      console.log("Raw response:", responseText); // Debug log
       
       if (!getdata.ok) {
-        throw new Error(`HTTP ${getdata.status}: ${getdata.statusText}`);
+        console.error(`HTTP ${getdata.status}: ${getdata.statusText}`);
+        console.error("Response body:", responseText);
+        return { error: `HTTP ${getdata.status}: ${responseText}` };
       }
       
-      const jsondata = await getdata.json();
-      console.log("Response data:", jsondata); // Debug log
+      // Try to parse JSON
+      let jsondata;
+      try {
+        jsondata = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error("Failed to parse JSON:", parseError);
+        return { error: "Invalid JSON response" };
+      }
+      
+      console.log("Parsed response data:", jsondata); // Debug log
       
       setUserdata({...jsondata})
       if(!jsondata.error){
-        setActivityData([...jsondata.Activity]);
+        if (jsondata.Activity) {
+          setActivityData([...jsondata.Activity]);
+        }
         setisLogin(true);
       }
       return jsondata;
